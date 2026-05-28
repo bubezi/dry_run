@@ -1,0 +1,13 @@
+# TODO dry_run
+
+[] persistence with SharedPreferences
+[] local notifications
+[] streak history
+[] relapse recovery UX
+[] midnight auto-reset logic
+[] better cards/animations
+[] home widgets
+[] charts
+[] “urge mode”
+[] money saved
+[] danger hours

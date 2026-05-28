@@ -1,33 +1,29 @@
+import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class StorageService {
-  static Future<void> saveInt(String key, int value) async {
+  static const _checkInsKey = "check_ins";
+
+  static Future<void> saveCheckIns(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(key, value);
+    await prefs.setString(_checkInsKey, jsonEncode(data));
   }
 
-  static Future<int> getInt(String key, int defaultValue) async {
+  static Future<Map<String, dynamic>> loadCheckIns() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(key) ?? defaultValue;
+    final raw = prefs.getString(_checkInsKey);
+
+    if (raw == null) return {};
+
+    try {
+      return Map<String, dynamic>.from(jsonDecode(raw));
+    } catch (_) {
+      return {};
+    }
   }
 
-  static Future<void> saveBool(String key, bool value) async {
+  static Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(key, value);
-  }
-
-  static Future<bool> getBool(String key, bool defaultValue) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(key) ?? defaultValue;
-  }
-
-  static Future<void> saveString(String key, String value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, value);
-  }
-
-  static Future<String?> getString(String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(key);
+    await prefs.clear();
   }
 }
