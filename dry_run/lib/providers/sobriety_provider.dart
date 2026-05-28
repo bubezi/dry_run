@@ -53,17 +53,24 @@ class SobrietyNotifier extends StateNotifier<Map<String, CheckIn>> {
   }
 
   int computeStreak() {
-    final sorted = state.values.toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-
     int streak = 0;
 
-    for (final entry in sorted) {
+    DateTime cursor = DateTime.now();
+
+    while (true) {
+      final key = AppDateUtils.key(cursor);
+      final entry = state[key];
+
+      if (entry == null) break;
+
       if (entry.status == DayStatus.sober) {
         streak++;
-      } else {
-        break;
+        cursor = cursor.subtract(const Duration(days: 1));
+        continue;
       }
+
+      // drank OR unknown breaks streak
+      break;
     }
 
     return streak;
@@ -79,5 +86,27 @@ class SobrietyNotifier extends StateNotifier<Map<String, CheckIn>> {
       ..sort((a, b) => b.date.compareTo(a.date));
 
     return list;
+  }
+
+  Map<String, CheckIn> seedHistory(DateTime startDate) {
+    final Map<String, CheckIn> seeded = {};
+
+    final today = DateTime.now();
+    DateTime cursor = DateTime(startDate.year, startDate.month, startDate.day);
+
+    while (!cursor.isAfter(today)) {
+      final key = AppDateUtils.key(cursor);
+
+      seeded[key] = CheckIn(date: cursor, status: DayStatus.sober);
+
+      cursor = cursor.add(const Duration(days: 1));
+    }
+
+    return seeded;
+  }
+
+  void initializeFromOnboarding(DateTime startDate) {
+    state = seedHistory(startDate);
+    _persist();
   }
 }

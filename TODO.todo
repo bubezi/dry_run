@@ -1,13 +1,18 @@
 # TODO dry_run
 
 [] persistence with SharedPreferences
+[] evening check-in prompt
 [] local notifications
+[] “yesterday missing” reminder
 [] streak history
 [] relapse recovery UX
 [] midnight auto-reset logic
-[] better cards/animations
 [] home widgets
 [] charts
 [] “urge mode”
-[] money saved
 [] danger hours
+[] money saved
+[] D. UI polish pass
+[] modern cards
+[] animations
+[] glassmorphism cleanup

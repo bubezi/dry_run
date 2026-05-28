@@ -1,11 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'app.dart';
 
 void main() {
   runApp(
     const ProviderScope(
-      child: SoberApp(),
+      child: MyRoot(),
     ),
   );
+}
+
+class MyRoot extends StatelessWidget {
+  const MyRoot({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: SoberApp(),
+    );
+  }
 }

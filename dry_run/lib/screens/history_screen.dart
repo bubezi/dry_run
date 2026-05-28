@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/day_status.dart';
 import '../providers/sobriety_provider.dart';
-import '../utils/date_utils.dart';
 
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
@@ -21,8 +20,11 @@ class HistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(sobrietyProvider.notifier);
-    final history = notifier.getSortedHistory();
+  final state = ref.watch(sobrietyProvider);
+  final notifier = ref.read(sobrietyProvider.notifier);
+
+  final history = state.values.toList()
+    ..sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
       appBar: AppBar(title: const Text("History")),
