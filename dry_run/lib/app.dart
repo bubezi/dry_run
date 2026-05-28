@@ -17,28 +17,31 @@ class SoberApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final onboardingAsync = ref.watch(onboardingFutureProvider);
 
+    // 👇 THIS is the key fix
+    ref.watch(sobrietyProvider);
+
     return onboardingAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (_, _) => const Scaffold(
-        body: Center(child: Text("Error loading app")),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (_, _) =>
+          const Scaffold(body: Center(child: Text("Error loading app"))),
       data: (done) {
         if (!done) {
           return OnboardingScreen(
             onComplete: (startDate) async {
-              final notifier =
-                  ref.read(sobrietyProvider.notifier);
+              final notifier = ref.read(sobrietyProvider.notifier);
 
               notifier.initializeFromOnboarding(startDate);
 
               await StorageService.setOnboardingDone();
-              ref.refresh(onboardingFutureProvider).value;
+
+              // 🔥 FORCE both systems to refresh
+              ref.invalidate(onboardingFutureProvider);
             },
           );
         }
 
+        // 👇 important: use sobrietyState so rebuild happens
         return const HomeScreen();
       },
     );

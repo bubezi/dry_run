@@ -1,4 +1,4 @@
-package com.example.dry_run
+package com.dryrun.app
 
 import io.flutter.embedding.android.FlutterActivity
 
