@@ -1,14 +1,17 @@
+import 'package:dry_run/screens/splash_screen.dart';
+import 'package:dry_run/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'services/notification_service.dart';
 
 import 'app.dart';
 
-void main() {
-  runApp(
-    const ProviderScope(
-      child: MyRoot(),
-    ),
-  );
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await NotificationService().init();
+
+  runApp(const ProviderScope(child: MyRoot()));
 }
 
 class MyRoot extends StatelessWidget {
@@ -16,9 +19,11 @@ class MyRoot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      title: "Dry Run",
+      theme: AppTheme.dark(),
       debugShowCheckedModeBanner: false,
-      home: SoberApp(),
+      home: SplashScreen(next: const SoberApp()),
     );
   }
 }

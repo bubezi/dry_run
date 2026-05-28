@@ -1,6 +1,6 @@
 # TODO dry_run
 
-[] persistence with SharedPreferences
+[x] persistence with SharedPreferences
 [] evening check-in prompt
 [] local notifications
 [] “yesterday missing” reminder
@@ -16,3 +16,4 @@
 [] modern cards
 [] animations
 [] glassmorphism cleanup
+[] cloud data backup and login/signup

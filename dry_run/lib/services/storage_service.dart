@@ -4,6 +4,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 class StorageService {
   static const _checkInsKey = "check_ins";
   static const _onboardingKey = "onboarding_done";
+  static const String _lastCheckInKey = "last_check_in";
+
+  static Future<void> saveLastCheckIn(DateTime date) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastCheckInKey, date.toIso8601String());
+  }
+
+  static Future<DateTime?> getLastCheckIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getString(_lastCheckInKey);
+
+    if (value == null) return null;
+    return DateTime.parse(value);
+  }
 
   static Future<void> setOnboardingDone() async {
     final prefs = await SharedPreferences.getInstance();

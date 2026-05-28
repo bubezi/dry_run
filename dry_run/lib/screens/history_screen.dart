@@ -7,85 +7,50 @@ import '../providers/sobriety_provider.dart';
 class HistoryScreen extends ConsumerWidget {
   const HistoryScreen({super.key});
 
-  String label(DateTime date) {
-    final now = DateTime.now();
-    final d = DateTime(date.year, date.month, date.day);
-    final today = DateTime(now.year, now.month, now.day);
-    final diff = today.difference(d).inDays;
-
-    if (diff == 0) return "Today";
-    if (diff == 1) return "Yesterday";
-    return "${date.year}-${date.month}-${date.day}";
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-  final state = ref.watch(sobrietyProvider);
-  final notifier = ref.read(sobrietyProvider.notifier);
+    final state = ref.watch(sobrietyProvider);
+    final notifier = ref.read(sobrietyProvider.notifier);
 
-  final history = state.values.toList()
-    ..sort((a, b) => b.date.compareTo(a.date));
+    final history = state.values.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
 
     return Scaffold(
       appBar: AppBar(title: const Text("History")),
       body: ListView.builder(
+        padding: const EdgeInsets.all(16),
         itemCount: history.length,
         itemBuilder: (context, index) {
           final item = history[index];
 
-          Color color;
-          String text;
+          final isSober = item.status == DayStatus.sober;
 
-          switch (item.status) {
-            case DayStatus.sober:
-              color = Colors.green;
-              text = "Sober";
-              break;
-            case DayStatus.drank:
-              color = Colors.red;
-              text = "Drank";
-              break;
-            default:
-              color = Colors.grey;
-              text = "Unknown";
-          }
-
-          return ListTile(
-            title: Text(label(item.date)),
-            subtitle: Text(text),
-            trailing: Icon(Icons.edit, color: color),
-            onTap: () {
-              showModalBottomSheet(
-                context: context,
-                builder: (_) {
-                  return Wrap(
-                    children: [
-                      ListTile(
-                        title: const Text("Sober"),
-                        onTap: () {
-                          notifier.checkIn(item.date, DayStatus.sober);
-                          Navigator.pop(context);
-                        },
-                      ),
-                      ListTile(
-                        title: const Text("Drank"),
-                        onTap: () {
-                          notifier.checkIn(item.date, DayStatus.drank);
-                          Navigator.pop(context);
-                        },
-                      ),
-                      ListTile(
-                        title: const Text("Clear"),
-                        onTap: () {
-                          notifier.checkIn(item.date, DayStatus.unknown);
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
+          return Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: isSober
+                    ? Colors.green.withValues(alpha: 0.2)
+                    : Colors.red.withValues(alpha: 0.2),
+                child: Icon(
+                  isSober ? Icons.check : Icons.close,
+                  color: isSober ? Colors.green : Colors.red,
+                ),
+              ),
+              title: Text(item.date.toString().split(' ')[0]),
+              subtitle: Text(isSober ? "Sober" : "Drank"),
+              onTap: () {
+                notifier.checkIn(
+                  item.date,
+                  isSober ? DayStatus.drank : DayStatus.sober,
+                );
+              },
+            ),
           );
         },
       ),

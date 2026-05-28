@@ -1,5 +1,4 @@
-import 'dart:math';
-
+import 'package:dry_run/utils/ui_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,186 +17,169 @@ class HomeScreen extends ConsumerWidget {
 
     final streak = notifier.computeStreak();
     final needsYesterday = notifier.needsYesterdayCheckIn();
-
-    final quote = [
-      "One day at a time.",
-      "Momentum compounds quietly.",
-      "You don’t restart, you continue.",
-      "Small decisions build identity.",
-      "Stability is the real win.",
-    ][Random().nextInt(5)];
+    final quote = notifier.dynamicMessage;
+    final mode = notifier.behaviorMode;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0F14),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // HEADER
-              Text(
+              const Text(
                 "Today",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
               ),
 
               const SizedBox(height: 6),
 
               Text(
-                DateTime.now().toLocal().toString().split(' ')[0],
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
-                  fontSize: 14,
-                ),
+                DateTime.now().toString().split(' ')[0],
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
               ),
 
               const SizedBox(height: 25),
 
-              // STREAK CARD
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1B4332), Color(0xFF0F2A1F)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Sober streak",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      "$streak",
-                      style: const TextStyle(
-                        fontSize: 64,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const Text("days", style: TextStyle(color: Colors.white70)),
-                  ],
-                ),
-              ),
+              _StreakCard(streak: streak),
 
               const SizedBox(height: 18),
 
-              // QUOTE CARD
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  quote,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 16,
-                  ),
-                ),
-              ),
+              _MoodCard(quote: quote, mode: mode),
 
               const SizedBox(height: 18),
 
-              // YESTERDAY PROMPT
-              if (needsYesterday)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2B2D42),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Yesterday check-in",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "How did it go?",
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF1B4332),
-                              ),
-                              onPressed: () async {
-                                notifier.checkIn(
-                                  AppDateUtils.yesterday(),
-                                  DayStatus.sober,
-                                );
-                              },
-                              child: const Text("Sober"),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.redAccent,
-                              ),
-                              onPressed: () {
-                                notifier.checkIn(
-                                  AppDateUtils.yesterday(),
-                                  DayStatus.drank,
-                                );
-                              },
-                              child: const Text("Drank"),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              if (needsYesterday) _YesterdayCard(notifier: notifier),
 
               const Spacer(),
 
-              // ACTIONS
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const HistoryScreen(),
-                          ),
-                        );
-                      },
-                      child: const Text("History"),
-                    ),
-                  ),
-                ],
+              OutlinedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                  );
+                },
+                child: const Text("History"),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StreakCard extends StatelessWidget {
+  final int streak;
+  const _StreakCard({required this.streak});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [
+            streakColor(streak).withValues(alpha: 0.8),
+            const Color(0xFF0F2A1F),
+          ],
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Sober streak", style: TextStyle(color: Colors.white70)),
+          const SizedBox(height: 10),
+          Text(
+            "$streak",
+            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
+          ),
+          const Text("days", style: TextStyle(color: Colors.white70)),
+        ],
+      ),
+    );
+  }
+}
+
+class _MoodCard extends StatelessWidget {
+  final String quote;
+  final String mode;
+
+  const _MoodCard({required this.quote, required this.mode});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(quote),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: modeColor(mode).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              mode.toUpperCase(),
+              style: TextStyle(color: modeColor(mode)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _YesterdayCard extends StatelessWidget {
+  final dynamic notifier;
+
+  const _YesterdayCard({required this.notifier});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Yesterday check-in"),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () {
+                    notifier.checkIn(AppDateUtils.yesterday(), DayStatus.sober);
+                  },
+                  child: const Text("Sober"),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () {
+                    notifier.checkIn(AppDateUtils.yesterday(), DayStatus.drank);
+                  },
+                  child: const Text("Drank"),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
