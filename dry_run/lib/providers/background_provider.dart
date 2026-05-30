@@ -2,7 +2,11 @@ import 'package:workmanager/workmanager.dart';
 import 'package:dry_run/services/storage_service.dart';
 import 'package:dry_run/services/notification_service.dart';
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const String dailyTask = "daily_check_task";
+
+// ─── Background entry point ───────────────────────────────────────────────────
 
 @pragma('vm:entry-point')
 void callbackDispatcher() {
@@ -14,21 +18,24 @@ void callbackDispatcher() {
   });
 }
 
+// ─── Daily check logic (background isolate safe) ──────────────────────────────
+
 Future<void> _runDailyCheck() async {
   final notification = NotificationService();
-
-  await notification.init(); // 🔥 REQUIRED in background isolate
+  await notification.init(); // required in background isolate
 
   final lastCheckIn = await StorageService.getLastCheckIn();
-  final now = DateTime.now();
 
   if (lastCheckIn != null) {
+    final now = DateTime.now();
     final diff = now.difference(lastCheckIn).inDays;
 
     if (diff >= 2) {
-      await notification.showMissedDayReminder();
+      // User has not checked in for more than one full day
+      await notification.showNewDayCheckInPrompt();
     }
   }
 
-  await notification.scheduleMotivation();
+  // Always reschedule daily motivation in the background worker
+  await notification.scheduleDailyMotivation();
 }

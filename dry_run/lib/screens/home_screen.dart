@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/day_status.dart';
 import '../providers/sobriety_provider.dart';
+import '../providers/emergency_provider.dart';
 import '../utils/date_utils.dart';
 import 'history_screen.dart';
+import 'emergency_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -15,53 +17,85 @@ class HomeScreen extends ConsumerWidget {
     final notifier = ref.read(sobrietyProvider.notifier);
     ref.watch(sobrietyProvider);
 
-    final streak = notifier.computeStreak();
+    final stats = notifier.computeStats();
     final needsYesterday = notifier.needsYesterdayCheckIn();
     final quote = notifier.dynamicMessage;
     final mode = notifier.behaviorMode;
 
     return Scaffold(
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                "Today",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.w600),
+              // ─── Header ────────────────────────────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Today",
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        DateTime.now().toString().split(' ')[0],
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.4),
+                            fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  // Emergency button — subtle but accessible
+                  _EmergencyButton(),
+                ],
               ),
 
-              const SizedBox(height: 6),
+              const SizedBox(height: 20),
 
-              Text(
-                DateTime.now().toString().split(' ')[0],
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-              ),
+              // ─── Main streak card ─────────────────────────────────────────
+              _StreakCard(streak: stats.currentStreak),
 
-              const SizedBox(height: 25),
+              const SizedBox(height: 14),
 
-              _StreakCard(streak: streak),
+              // ─── Stats row ─────────────────────────────────────────────────
+              _StatsRow(stats: stats),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
+              // ─── Mood / mode card ─────────────────────────────────────────
               _MoodCard(quote: quote, mode: mode),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
-              if (needsYesterday) _YesterdayCard(notifier: notifier),
+              // ─── Yesterday check-in ───────────────────────────────────────
+              if (needsYesterday) ...[
+                _YesterdayCard(notifier: notifier),
+                const SizedBox(height: 14),
+              ],
 
-              const Spacer(),
-
-              OutlinedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
-                  );
-                },
-                child: const Text("History"),
+              // ─── History button ───────────────────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const HistoryScreen()),
+                    );
+                  },
+                  child: const Text("View History"),
+                ),
               ),
+
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -69,6 +103,8 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 }
+
+// ─── Streak Card ──────────────────────────────────────────────────────────────
 
 class _StreakCard extends StatelessWidget {
   final int streak;
@@ -91,7 +127,7 @@ class _StreakCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Sober streak", style: TextStyle(color: Colors.white70)),
+          const Text("Current streak", style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 10),
           Text(
             "$streak",
@@ -103,6 +139,153 @@ class _StreakCard extends StatelessWidget {
     );
   }
 }
+
+// ─── Stats Row ────────────────────────────────────────────────────────────────
+
+class _StatsRow extends StatelessWidget {
+  final StreakStats stats;
+  const _StatsRow({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _StatTile(
+                label: "Longest streak",
+                value: "${stats.longestStreak}d",
+                icon: Icons.emoji_events_outlined,
+                iconColor: const Color(0xFFF39C12),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatTile(
+                label: "Total sober days",
+                value: "${stats.totalSoberDays}",
+                icon: Icons.calendar_today_outlined,
+                iconColor: const Color(0xFF3498DB),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _RecoveryTile(stats: stats),
+      ],
+    );
+  }
+}
+
+class _StatTile extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color iconColor;
+
+  const _StatTile({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecoveryTile extends StatelessWidget {
+  final StreakStats stats;
+  const _RecoveryTile({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = stats.recoveryPercentage / 100;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                stats.recoveryLabel,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 13,
+                ),
+              ),
+              Text(
+                stats.percentageLabel,
+                style: const TextStyle(
+                  color: Color(0xFF2ECC71),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct.clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: Colors.white12,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                pct >= 0.8
+                    ? const Color(0xFF2ECC71)
+                    : pct >= 0.5
+                        ? const Color(0xFFF39C12)
+                        : const Color(0xFFE74C3C),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Mood Card ────────────────────────────────────────────────────────────────
 
 class _MoodCard extends StatelessWidget {
   final String quote;
@@ -131,7 +314,7 @@ class _MoodCard extends StatelessWidget {
             ),
             child: Text(
               mode.toUpperCase(),
-              style: TextStyle(color: modeColor(mode)),
+              style: TextStyle(color: modeColor(mode), fontSize: 12),
             ),
           ),
         ],
@@ -140,9 +323,10 @@ class _MoodCard extends StatelessWidget {
   }
 }
 
+// ─── Yesterday Card ───────────────────────────────────────────────────────────
+
 class _YesterdayCard extends StatelessWidget {
   final dynamic notifier;
-
   const _YesterdayCard({required this.notifier});
 
   @override
@@ -152,12 +336,24 @@ class _YesterdayCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFF39C12).withValues(alpha: 0.3),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Yesterday check-in"),
-          const SizedBox(height: 10),
+          Row(
+            children: [
+              const Icon(Icons.history, color: Color(0xFFF39C12), size: 16),
+              const SizedBox(width: 6),
+              const Text(
+                "Yesterday needs a check-in",
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -180,6 +376,60 @@ class _YesterdayCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Emergency Button ─────────────────────────────────────────────────────────
+
+class _EmergencyButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const EmergencyScreen(),
+            transitionsBuilder: (_, anim, __, child) {
+              return FadeTransition(opacity: anim, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE74C3C).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: const Color(0xFFE74C3C).withValues(alpha: 0.3),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Color(0xFFE74C3C),
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Text(
+              "I want to drink",
+              style: TextStyle(
+                color: Color(0xFFE74C3C),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
