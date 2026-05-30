@@ -30,9 +30,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
 
     _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _scale = Tween<double>(begin: 0.96, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scale = Tween<double>(
+      begin: 0.96,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
     _controller.forward();
   }
@@ -118,15 +119,26 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       const SizedBox(height: 40),
 
                       AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
+                        duration: const Duration(milliseconds: 250),
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
                           onPressed: _confirming ? null : confirm,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _confirming
-                                ? Colors.green.withValues(alpha: 0.4)
-                                : Colors.green,
+                            backgroundColor: const Color(
+                              0xFF1B1F2A,
+                            ), // dark neutral
+                            foregroundColor: Colors.white, // text contrast
+                            disabledBackgroundColor: const Color(
+                              0xFF1B1F2A,
+                            ).withValues(alpha: 0.5),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.08),
+                              ),
+                            ),
                           ),
                           child: _confirming
                               ? const SizedBox(
@@ -137,7 +149,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                                     color: Colors.white,
                                   ),
                                 )
-                              : const Text("Start"),
+                              : const Text(
+                                  "Start",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
                         ),
                       ),
                     ],

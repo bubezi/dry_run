@@ -14,6 +14,9 @@ class NotificationService {
     await _plugin.initialize(settings: initSettings);
 
     tz.initializeTimeZones();
+
+    // 🔥 important
+    tz.setLocalLocation(tz.getLocation('Africa/Nairobi'));
   }
 
   Future<void> scheduleEveningCheckIn() async {
@@ -52,6 +55,74 @@ class NotificationService {
           priority: Priority.high,
         ),
       ),
+    );
+  }
+
+  Future<void> scheduleDailyCheckIn() async {
+    final now = DateTime.now();
+
+    final scheduled = DateTime(now.year, now.month, now.day, 20, 0);
+
+    final target = scheduled.isBefore(now)
+        ? scheduled.add(const Duration(days: 1))
+        : scheduled;
+
+    await _plugin.zonedSchedule(
+      id: 1, // id
+      title: 'Evening Check-in', // title
+      body: 'Did you stay sober today?', // body
+      scheduledDate: tz.TZDateTime.from(target, tz.local), // scheduledDate
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'checkin',
+          'Daily Check-in',
+          importance: Importance.max,
+          priority: Priority.high,
+          actions: <AndroidNotificationAction>[
+            AndroidNotificationAction('sober', 'Sober'),
+            AndroidNotificationAction('drank', 'Drank'),
+          ],
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
+    );
+  }
+
+  Future<void> scheduleMotivation() async {
+    final messages = [
+      "Small wins still count.",
+      "One clean decision is enough.",
+      "Don’t restart the cycle today.",
+      "Momentum beats motivation.",
+      "You don’t need perfect. Just present.",
+    ];
+
+    messages.shuffle();
+
+    final now = DateTime.now();
+
+    final scheduled = DateTime(now.year, now.month, now.day, 10, 0);
+
+    final target = scheduled.isBefore(now)
+        ? scheduled.add(const Duration(days: 1))
+        : scheduled;
+
+    await _plugin.zonedSchedule(
+      id: 10,
+      title: "Daily Focus",
+      body: messages.first,
+      scheduledDate: tz.TZDateTime.from(target, tz.local),
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'motivation',
+          'Motivation',
+          importance: Importance.low,
+          priority: Priority.low,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 }
