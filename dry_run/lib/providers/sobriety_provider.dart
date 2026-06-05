@@ -89,6 +89,13 @@ class SobrietyNotifier extends StateNotifier<Map<String, CheckIn>> {
     int streak = 0;
     DateTime cursor = DateTime.now();
 
+    // If today hasn't been logged yet, start counting from yesterday.
+    // This prevents the streak from dropping to 0 at midnight before the
+    // user gets a chance to log their day.
+    if (!hasCheckedIn(cursor)) {
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+
     while (true) {
       final entry = state[AppDateUtils.key(cursor)];
       if (entry == null) break;
@@ -149,14 +156,33 @@ class SobrietyNotifier extends StateNotifier<Map<String, CheckIn>> {
 
   Future<void> checkIn(DateTime date, DayStatus status) async {
     final key = AppDateUtils.key(date);
+    final existing = state[key];
 
     state = {
       ...state,
-      key: CheckIn(date: AppDateUtils.normalize(date), status: status),
+      key: CheckIn(
+        date: AppDateUtils.normalize(date),
+        status: status,
+        // Preserve any existing note when just toggling status
+        note: existing?.note,
+      ),
     };
 
     await _persist();
     await _postCheckInBehavior(status);
+  }
+
+  Future<void> updateNote(DateTime date, String note) async {
+    final key = AppDateUtils.key(date);
+    final existing = state[key];
+    if (existing == null) return;
+
+    state = {
+      ...state,
+      key: existing.copyWith(note: note.trim().isEmpty ? null : note.trim()),
+    };
+
+    await _persist();
   }
 
   Future<void> markCheckIn(bool sober) async {

@@ -493,7 +493,7 @@ class _EmergencyButton extends ConsumerWidget {
             ),
             const SizedBox(width: 6),
             const Text(
-              "I want to drink",
+              "Emergency",
               style: TextStyle(
                   color: Color(0xFFE74C3C),
                   fontSize: 12,
