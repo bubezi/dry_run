@@ -1,4 +1,5 @@
 import 'package:dry_run/providers/background_provider.dart';
+import 'package:dry_run/providers/day_watcher_provider.dart';
 import 'package:dry_run/screens/splash_screen.dart';
 import 'package:dry_run/services/scheduler_service.dart';
 import 'package:dry_run/theme/app_theme.dart';
@@ -6,10 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:workmanager/workmanager.dart';
 import 'services/notification_service.dart';
+import 'utils/date_utils.dart';
 
 import 'app.dart';
-
-// ─── App entry point ──────────────────────────────────────────────────────────
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,8 +31,6 @@ void main() async {
   runApp(const ProviderScope(child: MyRoot()));
 }
 
-// ─── Root widget ──────────────────────────────────────────────────────────────
-
 class MyRoot extends ConsumerStatefulWidget {
   const MyRoot({super.key});
 
@@ -46,12 +44,12 @@ class _MyRootState extends ConsumerState<MyRoot> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Run after first frame so Riverpod providers are ready
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Start the in-app day watcher
+      ref.read(dayWatcherProvider);
+
       final scheduler = ref.read(schedulerProvider);
-      // Initial setup: rebuild all scheduled notifications
       await scheduler.rebuildAll();
-      // Check if a new day has arrived since last launch
       await scheduler.handleAppForeground();
     });
   }
@@ -62,11 +60,16 @@ class _MyRootState extends ConsumerState<MyRoot> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  /// Called whenever the app comes back to the foreground.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // New day detection on every foreground event
+      // Sync the date provider in case the day changed while suspended
+      final today = AppDateUtils.normalize(DateTime.now());
+      final current = ref.read(currentDateProvider);
+      if (today != current) {
+        ref.read(currentDateProvider.notifier).state = today;
+      }
+
       ref.read(schedulerProvider).handleAppForeground();
     }
   }

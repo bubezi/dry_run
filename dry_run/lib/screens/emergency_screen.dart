@@ -267,8 +267,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen>
         );
 
       case EmergencyPhase.idle:
-      default:
-        return const SizedBox.shrink(key: ValueKey('idle'));
+      return const SizedBox.shrink(key: ValueKey('idle'));
     }
   }
 }
@@ -287,7 +286,7 @@ class _BreathingOrb extends StatelessWidget {
 
     return AnimatedBuilder(
       animation: animation,
-      builder: (_, __) {
+      builder: (_, _) {
         return Transform.scale(
           scale: isResolved ? 1.0 : animation.value,
           child: Container(

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/day_status.dart';
 import '../providers/sobriety_provider.dart';
-import '../providers/emergency_provider.dart';
+import '../providers/day_watcher_provider.dart';
 import '../utils/date_utils.dart';
 import 'history_screen.dart';
 import 'emergency_screen.dart';
@@ -14,13 +14,24 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Watch the current date — rebuilds this widget when the day rolls over.
+    final today = ref.watch(currentDateProvider);
+
+    // Keep the day watcher alive while the home screen is mounted.
+    ref.watch(dayWatcherProvider);
+
     final notifier = ref.read(sobrietyProvider.notifier);
     ref.watch(sobrietyProvider);
 
     final stats = notifier.computeStats();
     final needsYesterday = notifier.needsYesterdayCheckIn();
+    final hasLoggedToday = notifier.hasCheckedIn(today);
     final quote = notifier.dynamicMessage;
     final mode = notifier.behaviorMode;
+
+    // Show the "log today" prompt if it's 8pm+ and today isn't logged yet.
+    final watcher = ref.read(dayWatcherProvider);
+    final showTodayPrompt = watcher.isPastEveningThreshold && !hasLoggedToday;
 
     return Scaffold(
       body: SafeArea(
@@ -29,7 +40,7 @@ class HomeScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── Header ────────────────────────────────────────────────────
+              // ─── Header ──────────────────────────────────────────────────
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -39,58 +50,60 @@ class HomeScreen extends ConsumerWidget {
                       const Text(
                         "Today",
                         style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w600,
-                        ),
+                            fontSize: 28, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        DateTime.now().toString().split(' ')[0],
+                        '${today.year}-'
+                        '${today.month.toString().padLeft(2, '0')}-'
+                        '${today.day.toString().padLeft(2, '0')}',
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.4),
                             fontSize: 13),
                       ),
                     ],
                   ),
-                  // Emergency button — subtle but accessible
                   _EmergencyButton(),
                 ],
               ),
 
               const SizedBox(height: 20),
 
-              // ─── Main streak card ─────────────────────────────────────────
+              // ─── Streak card ──────────────────────────────────────────────
               _StreakCard(streak: stats.currentStreak),
 
               const SizedBox(height: 14),
 
-              // ─── Stats row ─────────────────────────────────────────────────
+              // ─── Stats ───────────────────────────────────────────────────
               _StatsRow(stats: stats),
 
               const SizedBox(height: 14),
 
-              // ─── Mood / mode card ─────────────────────────────────────────
+              // ─── Mood card ────────────────────────────────────────────────
               _MoodCard(quote: quote, mode: mode),
 
               const SizedBox(height: 14),
 
-              // ─── Yesterday check-in ───────────────────────────────────────
+              // ─── Log TODAY prompt (8pm or later, not yet logged) ──────────
+              if (showTodayPrompt) ...[
+                _TodayCheckInCard(notifier: notifier, today: today),
+                const SizedBox(height: 14),
+              ],
+
+              // ─── Log YESTERDAY prompt (missed) ────────────────────────────
               if (needsYesterday) ...[
                 _YesterdayCard(notifier: notifier),
                 const SizedBox(height: 14),
               ],
 
-              // ─── History button ───────────────────────────────────────────
+              // ─── History ──────────────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (_) => const HistoryScreen()),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HistoryScreen()),
+                  ),
                   child: const Text("View History"),
                 ),
               ),
@@ -127,11 +140,13 @@ class _StreakCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Current streak", style: TextStyle(color: Colors.white70)),
+          const Text("Current streak",
+              style: TextStyle(color: Colors.white70)),
           const SizedBox(height: 10),
           Text(
             "$streak",
-            style: const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
+            style:
+                const TextStyle(fontSize: 64, fontWeight: FontWeight.bold),
           ),
           const Text("days", style: TextStyle(color: Colors.white70)),
         ],
@@ -207,18 +222,15 @@ class _StatTile extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+                color: Colors.white),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.45),
-              fontSize: 12,
-            ),
+                color: Colors.white.withValues(alpha: 0.45), fontSize: 12),
           ),
         ],
       ),
@@ -249,17 +261,15 @@ class _RecoveryTile extends StatelessWidget {
               Text(
                 stats.recoveryLabel,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 13,
-                ),
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 13),
               ),
               Text(
                 stats.percentageLabel,
                 style: const TextStyle(
-                  color: Color(0xFF2ECC71),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
+                    color: Color(0xFF2ECC71),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -290,7 +300,6 @@ class _RecoveryTile extends StatelessWidget {
 class _MoodCard extends StatelessWidget {
   final String quote;
   final String mode;
-
   const _MoodCard({required this.quote, required this.mode});
 
   @override
@@ -307,7 +316,8 @@ class _MoodCard extends StatelessWidget {
           Text(quote),
           const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: modeColor(mode).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(20),
@@ -316,6 +326,71 @@ class _MoodCard extends StatelessWidget {
               mode.toUpperCase(),
               style: TextStyle(color: modeColor(mode), fontSize: 12),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Log Today Card ───────────────────────────────────────────────────────────
+// Shown when it's 8pm or later and today hasn't been logged.
+
+class _TodayCheckInCard extends StatelessWidget {
+  final dynamic notifier;
+  final DateTime today;
+  const _TodayCheckInCard({required this.notifier, required this.today});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF2ECC71).withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.nightlight_outlined,
+                  color: Color(0xFF2ECC71), size: 16),
+              const SizedBox(width: 6),
+              const Text(
+                "How did today go?",
+                style: TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "It's evening — log today to keep your streak accurate.",
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () =>
+                      notifier.checkIn(today, DayStatus.sober),
+                  child: const Text("Sober"),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () =>
+                      notifier.checkIn(today, DayStatus.drank),
+                  child: const Text("Drank"),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -345,7 +420,8 @@ class _YesterdayCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.history, color: Color(0xFFF39C12), size: 16),
+              const Icon(Icons.history,
+                  color: Color(0xFFF39C12), size: 16),
               const SizedBox(width: 6),
               const Text(
                 "Yesterday needs a check-in",
@@ -358,18 +434,16 @@ class _YesterdayCard extends StatelessWidget {
             children: [
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
-                    notifier.checkIn(AppDateUtils.yesterday(), DayStatus.sober);
-                  },
+                  onPressed: () => notifier.checkIn(
+                      AppDateUtils.yesterday(), DayStatus.sober),
                   child: const Text("Sober"),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
-                    notifier.checkIn(AppDateUtils.yesterday(), DayStatus.drank);
-                  },
+                  onPressed: () => notifier.checkIn(
+                      AppDateUtils.yesterday(), DayStatus.drank),
                   child: const Text("Drank"),
                 ),
               ),
@@ -387,20 +461,18 @@ class _EmergencyButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => const EmergencyScreen(),
-            transitionsBuilder: (_, anim, __, child) {
-              return FadeTransition(opacity: anim, child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 300),
-          ),
-        );
-      },
+      onTap: () => Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => const EmergencyScreen(),
+          transitionsBuilder: (_, anim, _, child) =>
+              FadeTransition(opacity: anim, child: child),
+          transitionDuration: const Duration(milliseconds: 300),
+        ),
+      ),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: const Color(0xFFE74C3C).withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(20),
@@ -423,10 +495,9 @@ class _EmergencyButton extends ConsumerWidget {
             const Text(
               "I want to drink",
               style: TextStyle(
-                color: Color(0xFFE74C3C),
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
+                  color: Color(0xFFE74C3C),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500),
             ),
           ],
         ),

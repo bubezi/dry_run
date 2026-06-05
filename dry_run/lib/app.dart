@@ -24,7 +24,7 @@ class SoberApp extends ConsumerWidget {
     return onboardingAsync.when(
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (_, __) =>
+      error: (_, _) =>
           const Scaffold(body: Center(child: Text("Error loading app"))),
       data: (done) {
         if (!done) {

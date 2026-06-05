@@ -1,5 +1,7 @@
+import 'dart:math';
 import 'package:dry_run/registry/notification_registry.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../constants/quotes.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz;
 
@@ -25,7 +27,8 @@ class NotificationService {
     await _plugin.initialize(
       settings: initSettings,
       onDidReceiveNotificationResponse: _onNotificationResponse,
-      onDidReceiveBackgroundNotificationResponse: _onBackgroundNotificationResponse,
+      onDidReceiveBackgroundNotificationResponse:
+          _onBackgroundNotificationResponse,
     );
 
     tz.initializeTimeZones();
@@ -105,19 +108,19 @@ class NotificationService {
   Future<void> scheduleDailyMotivation({String? message}) async {
     await _plugin.cancel(id: NotificationRegistry.dailyMotivation);
 
-    final messages = message != null
-        ? [message]
-        : [
-            'Small wins still count.',
-            'One clean decision is enough.',
-            "Don't restart the cycle today.",
-            'Momentum beats motivation.',
-            "You don't need perfect. Just present.",
-            'Protect what you built.',
-            'Another sober morning is a win.',
-          ];
-
-    messages.shuffle();
+    // If a specific message was passed (from SchedulerService), use it.
+    // Otherwise draw from the full discipline + encouragement pool at random.
+    final String body;
+    if (message != null) {
+      body = message;
+    } else {
+      final pool = [
+        ...disciplineQuotes,
+        ...encouragementQuotes,
+        ...identityQuotes,
+      ];
+      body = pool[Random().nextInt(pool.length)];
+    }
 
     final target = _nextOccurrence(
       NotificationRegistry.morningHour,
@@ -127,7 +130,7 @@ class NotificationService {
     await _plugin.zonedSchedule(
       id: NotificationRegistry.dailyMotivation,
       title: 'Daily Focus',
-      body: messages.first,
+      body: body,
       scheduledDate: target,
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
@@ -222,7 +225,14 @@ class NotificationService {
 
   tz.TZDateTime _nextOccurrence(int hour, int minute) {
     final now = tz.TZDateTime.now(tz.local);
-    var scheduled = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour, minute);
+    var scheduled = tz.TZDateTime(
+      tz.local,
+      now.year,
+      now.month,
+      now.day,
+      hour,
+      minute,
+    );
     if (scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
     }
@@ -257,7 +267,8 @@ class _StorageBridge {
     if (package == null) return;
 
     final now = DateTime.now();
-    final key = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final key =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final status = sober ? 'sober' : 'drank';
 
     final raw = package.getString('check_ins');
@@ -280,8 +291,8 @@ class _StorageBridge {
   Future<dynamic> _loadSharedPrefs() async {
     try {
       // ignore: invalid_use_of_visible_for_testing_member
-      final SharedPreferences = await _getSharedPrefs();
-      return SharedPreferences;
+      final sharedPreferences = await _getSharedPrefs();
+      return sharedPreferences;
     } catch (_) {
       return null;
     }
@@ -292,16 +303,18 @@ class _StorageBridge {
 
   String _jsonEncode(Map<String, dynamic> map) {
     // Simple encoder without dart:convert import issues.
-    final entries = map.entries.map((e) {
-      final v = e.value;
-      if (v is Map) {
-        final inner = (v as Map<String, dynamic>).entries
-            .map((ie) => '"${ie.key}":"${ie.value}"')
-            .join(',');
-        return '"${e.key}":{$inner}';
-      }
-      return '"${e.key}":"$v"';
-    }).join(',');
+    final entries = map.entries
+        .map((e) {
+          final v = e.value;
+          if (v is Map) {
+            final inner = (v as Map<String, dynamic>).entries
+                .map((ie) => '"${ie.key}":"${ie.value}"')
+                .join(',');
+            return '"${e.key}":{$inner}';
+          }
+          return '"${e.key}":"$v"';
+        })
+        .join(',');
     return '{$entries}';
   }
 

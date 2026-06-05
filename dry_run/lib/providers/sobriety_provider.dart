@@ -1,11 +1,13 @@
-import 'package:dry_run/services/notification_service.dart';
+import 'dart:math';
 import 'package:dry_run/registry/notification_registry.dart';
+import 'package:dry_run/services/notification_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/check_in.dart';
 import '../models/day_status.dart';
 import '../services/storage_service.dart';
 import '../utils/date_utils.dart';
+import '../constants/quotes.dart';
 
 // ─── Providers ────────────────────────────────────────────────────────────────
 
@@ -34,7 +36,7 @@ class StreakStats {
       totalTrackedDays == 0 ? 0 : (totalSoberDays / totalTrackedDays) * 100;
 
   String get recoveryLabel =>
-      '${totalSoberDays} sober days out of $totalTrackedDays';
+      '$totalSoberDays sober days out of $totalTrackedDays';
 
   String get percentageLabel =>
       '${recoveryPercentage.toStringAsFixed(1)}% consistency';
@@ -43,6 +45,8 @@ class StreakStats {
 // ─── Notifier ─────────────────────────────────────────────────────────────────
 
 class SobrietyNotifier extends StateNotifier<Map<String, CheckIn>> {
+  final _rng = Random();
+
   SobrietyNotifier() : super({}) {
     _load();
   }
@@ -196,17 +200,25 @@ class SobrietyNotifier extends StateNotifier<Map<String, CheckIn>> {
     return 'fragile';
   }
 
+  /// Returns a random quote from the pool that matches the current behavior mode.
   String get dynamicMessage {
+    final rng = _rng;
     switch (behaviorMode) {
       case 'recovery':
-        return "You missed a check-in. No drama — just continue today.";
+        return recoveryQuotes[rng.nextInt(recoveryQuotes.length)];
       case 'stable':
-        return "You're in control. Keep it steady.";
+        // Stable: mix streak reinforcement with identity quotes
+        final pool = [...streakQuotes, ...identityQuotes, ...disciplineQuotes];
+        return pool[rng.nextInt(pool.length)];
       case 'building':
-        return "Momentum is forming. Don't interrupt it.";
+        // Building: discipline and streak focus
+        final pool = [...disciplineQuotes, ...streakQuotes];
+        return pool[rng.nextInt(pool.length)];
       case 'fragile':
       default:
-        return "One decision at a time.";
+        // Fragile: encouragement and craving resistance
+        final pool = [...encouragementQuotes, ...cravingQuotes];
+        return pool[rng.nextInt(pool.length)];
     }
   }
 

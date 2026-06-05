@@ -1,6 +1,8 @@
 import 'package:dry_run/registry/notification_registry.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math';
+import '../constants/quotes.dart';
 
 import 'notification_service.dart';
 import '../models/day_status.dart';
@@ -80,26 +82,29 @@ class SchedulerService {
       await _notifications.showMissedCheckInReminder();
     }
 
-    // Adjust motivation message tone based on mode
-    String? message;
+    // Pick a quote from the pool that matches the current behavior mode
+    final rng = Random();
+    String message;
     switch (behaviorMode) {
       case 'recovery':
-        message = "A slip doesn't erase progress. One day at a time.";
+        message = recoveryQuotes[rng.nextInt(recoveryQuotes.length)];
         break;
       case 'fragile':
-        message = 'Every sober hour counts. Keep going.';
+        final fragilePool = [...encouragementQuotes, ...cravingQuotes];
+        message = fragilePool[rng.nextInt(fragilePool.length)];
         break;
       case 'building':
-        message = 'Momentum is forming. Protect it.';
+        final buildingPool = [...disciplineQuotes, ...streakQuotes];
+        message = buildingPool[rng.nextInt(buildingPool.length)];
         break;
       case 'stable':
-        message = 'You are in control. Stay steady.';
+      default:
+        final stablePool = [...streakQuotes, ...identityQuotes, ...milestoneQuotes];
+        message = stablePool[rng.nextInt(stablePool.length)];
         break;
     }
 
-    if (message != null) {
-      await _notifications.scheduleDailyMotivation(message: message);
-    }
+    await _notifications.scheduleDailyMotivation(message: message);
   }
 
   // ─── Notification action handler (from notification panel buttons) ─────────
